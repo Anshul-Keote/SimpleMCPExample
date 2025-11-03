@@ -1,13 +1,14 @@
 #!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
-import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import express from "express";
 import cors from "cors";
+import { randomUUID } from "crypto";
 
 // Create server instance
 const server = new Server(
@@ -191,7 +192,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-// Start the HTTP server with SSE transport
+// Start the HTTP server with StreamableHttp transport
 async function main() {
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -199,33 +200,31 @@ async function main() {
   // Enable CORS for all origins (adjust for production)
   app.use(cors());
 
+  // Parse JSON bodies
+  app.use(express.json());
+
   // Health check endpoint
   app.get("/health", (_req, res) => {
     res.json({ status: "healthy", server: "courtsapp-mcp-server" });
   });
 
-  // SSE endpoint for MCP
-  app.get("/sse", async (req, res) => {
-    console.log("New SSE connection established");
+  // StreamableHttp endpoint for MCP
+  app.post("/mcp", async (req, res) => {
+    console.log("New MCP connection established");
 
-    const transport = new SSEServerTransport("/message", res);
-    await server.connect(transport);
-
-    // Handle client disconnect
-    req.on("close", () => {
-      console.log("SSE connection closed");
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
     });
-  });
 
-  // Endpoint to receive messages from client
-  app.post("/message", async (req, res) => {
-    // SSE transport handles the message routing
-    res.status(200).send();
+    await server.connect(transport);
+    await transport.handleRequest(req, res);
+
+    console.log("MCP request handled");
   });
 
   app.listen(PORT, () => {
     console.log(`CourtsApp MCP Server running on http://localhost:${PORT}`);
-    console.log(`SSE endpoint: http://localhost:${PORT}/sse`);
+    console.log(`MCP endpoint: http://localhost:${PORT}/mcp`);
     console.log(`Health check: http://localhost:${PORT}/health`);
   });
 }

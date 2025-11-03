@@ -17,7 +17,7 @@ npm start
 
 The server will start on `http://localhost:3000`
 
-**MCP Client URL:** `http://localhost:3000/sse`
+**MCP Client URL:** `http://localhost:3000/mcp`
 
 ## Tools
 
@@ -118,8 +118,7 @@ PORT=8080 npm start
 
 The server exposes the following endpoints:
 - `http://localhost:3000/health` - Health check endpoint
-- `http://localhost:3000/sse` - SSE endpoint for MCP connections
-- `http://localhost:3000/message` - POST endpoint for client messages
+- `http://localhost:3000/mcp` - Streamable HTTP endpoint for MCP connections
 
 ## Development
 
@@ -130,15 +129,15 @@ npm run dev
 
 ## Connecting to an LLM Application
 
-This MCP server uses **SSE (Server-Sent Events) transport over HTTP**, making it accessible via the web. MCP clients can connect to the server over HTTP.
+This MCP server uses **Streamable HTTP (SHTTP) transport**, the modern replacement for SSE. This transport is accessible via the web and MCP clients can connect to the server over HTTP.
 
 ### Example Client Configuration
 
-For MCP clients that support SSE transport, configure with:
+For MCP clients that support Streamable HTTP transport, configure with:
 
 ```json
 {
-  "url": "http://localhost:3000/sse"
+  "url": "http://localhost:3000/mcp"
 }
 ```
 
@@ -151,23 +150,17 @@ server {
     listen 80;
     server_name your-domain.com;
 
-    location /mcp/ {
-        proxy_pass http://localhost:3000/;
+    location / {
+        proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-
-        # SSE specific settings
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 86400s;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 ```
 
-Then clients can connect to: `http://your-domain.com/mcp/sse`
+Then clients can connect to: `http://your-domain.com/mcp`
 
 ## Project Structure
 
@@ -184,7 +177,7 @@ CourtsAppMCPServer/
 ## Dependencies
 
 - `@modelcontextprotocol/sdk`: Official MCP SDK for TypeScript
-- `express`: Web server framework for HTTP/SSE transport
+- `express`: Web server framework for Streamable HTTP transport
 - `cors`: CORS middleware for cross-origin requests
 - `typescript`: TypeScript compiler
 - `@types/node`: Node.js type definitions
@@ -231,7 +224,7 @@ npm start
 ngrok http 3000
 ```
 
-Then use the ngrok URL + `/sse` for your MCP client: `https://your-ngrok-url.ngrok.io/sse`
+Then use the ngrok URL + `/mcp` for your MCP client: `https://your-ngrok-url.ngrok.io/mcp`
 
 ## License
 
