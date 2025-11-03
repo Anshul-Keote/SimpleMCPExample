@@ -203,6 +203,14 @@ async function main() {
   // Parse JSON bodies
   app.use(express.json());
 
+  // Create transport once
+  const transport = new StreamableHTTPServerTransport({
+    sessionIdGenerator: () => randomUUID(),
+  });
+
+  // Connect server to transport
+  await server.connect(transport);
+
   // Health check endpoint
   app.get("/health", (_req, res) => {
     res.json({ status: "healthy", server: "courtsapp-mcp-server" });
@@ -210,15 +218,8 @@ async function main() {
 
   // StreamableHttp endpoint for MCP
   app.post("/mcp", async (req, res) => {
-    console.log("New MCP connection established");
-
-    const transport = new StreamableHTTPServerTransport({
-      sessionIdGenerator: () => randomUUID(),
-    });
-
-    await server.connect(transport);
-    await transport.handleRequest(req, res);
-
+    console.log("New MCP request received");
+    await transport.handleRequest(req, res, req.body);
     console.log("MCP request handled");
   });
 
